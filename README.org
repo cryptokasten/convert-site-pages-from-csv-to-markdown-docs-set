@@ -1,0 +1,87 @@
+#+TITLE: Convert site pages from csv to markdown docs set
+#+OPTIONS: ^:nil
+#+PROPERTY: header-args:sh :session *shell convert-site-pages-from-csv-to-markdown-docs-set sh* :results silent raw
+#+PROPERTY: header-args:python :session *shell convert-site-pages-from-csv-to-markdown-docs-set python* :results silent raw
+
+** System environment
+
+- Python 3.7
+
+- pandoc 1.19.2.1
+
+Python modules:
+
+- pypandoc==1.5
+
+** Test csv
+
+#+BEGIN_SRC csv :tangle data/test.csv
+name,content,date,description,keywords,title,language
+hello_world,"<h2>Привет, Мир!</h2>",2020-03-20,Тестовая страница сайта,"test, ssg, markdown, csv",Test,ru
+#+END_SRC
+
+** Imports
+
+#+BEGIN_SRC python
+import csv
+import os
+import pypandoc
+#+END_SRC
+
+** Constants
+
+#+BEGIN_SRC python
+F_NAME = "name"
+F_CONTENT = "content"
+#+END_SRC
+
+** Convert header
+
+#+BEGIN_SRC python
+def convert_header(header):
+    s = "---\n"
+    for k, v in header.items(): s += '%s: "%s"\n' % (k, v.replace("\n", " "))
+    s += "---\n\n"
+    return s
+#+END_SRC
+
+** Prepare row
+
+#+BEGIN_SRC python
+def prepare_row(row):
+    name = row[F_NAME]
+    del row[F_NAME]
+    content = row[F_CONTENT]
+    content = pypandoc.convert_text(content, to="markdown", format="html")
+    del row[F_CONTENT]
+    return name, row, content
+#+END_SRC
+
+** Write markdown file
+
+#+BEGIN_SRC python
+def write_md_file(directory, name, header, content):
+    fn = os.path.join(directory, name+".md")
+    f = open(fn, "wt")
+    f.write(convert_header(header))
+    f.write(content)
+    f.close()
+#+END_SRC
+
+** Main
+
+#+BEGIN_SRC python
+fn = "data/test.csv"
+output = "data/output"
+#+END_SRC
+
+#+BEGIN_SRC python
+csvfile = open(fn, newline='')
+reader = csv.DictReader(csvfile)
+for row in reader:
+    filename, header, content = prepare_row(row)
+    write_md_file(output, filename, header, content)
+
+csvfile.close()
+#+END_SRC
+
